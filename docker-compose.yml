@@ -1,0 +1,46 @@
+x-common: &common
+  ipc: host
+  network_mode: host
+  environment:
+    - DISPLAY=${DISPLAY}
+    - QT_X11_NO_MITSHM=1
+  volumes:
+    - .:/app
+    - /tmp/.X11-unix:/tmp/.X11-unix:rw  # X11ソケット
+  device_cgroup_rules:
+    - "c 81:* rmw"  # video4linuxデバイス全般(/dev/video*)を許可
+  devices:
+    - /dev/video0:/dev/video0  # cgroupがうまく動かないため決め打ち
+  stdin_open: true
+  tty: true
+
+x-gpu: &gpu
+  devices:
+    - /dev/dri:/dev/dri  # GPU描画支援(GUI表示を軽くする場合、任意)
+  deploy:
+    resources:
+      reservations:
+        devices: [{ driver: nvidia, count: all, capabilities: [gpu] }]
+
+services:
+  mmpose-stable:
+    <<: [*common, *gpu]
+    build:
+      context: .
+      target: stable
+    profiles: ["stable"]
+
+  mmpose-latest:
+    <<: [*common, *gpu]
+    build:
+      context: .
+      target: thirdparty-latest
+    profiles: ["latest"]
+
+  mmpose-cpu:
+    <<: *common
+    build:
+      context: .
+      target: cpu-only
+    profiles: ["cpu"]
+
